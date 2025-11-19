@@ -129,6 +129,6 @@ if __name__ == '__main__':
           decrypted = f.read()
 
       if original == decrypted:
-          print("✓ SUCCESS! Encryption/Decryption works correctly!")
+          print("SUCCESS! Encryption/Decryption works correctly!")
       else:
-          print("✗ FAILED! Files don't match!")
+          print("FAILED! Files don't match!")

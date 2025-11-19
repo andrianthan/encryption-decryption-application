@@ -133,6 +133,6 @@ if __name__ == '__main__':
         decrypted = f.read()
 
     if original == decrypted:
-        print("✓ SUCCESS! ChaCha20-Poly1305 Encryption/Decryption works correctly!")
+        print("SUCCESS! ChaCha20-Poly1305 Encryption/Decryption works correctly!")
     else:
-        print("✗ FAILED! Files don't match!")
+        print("FAILED! Files don't match!")
