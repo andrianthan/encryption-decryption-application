@@ -1,17 +1,21 @@
+# AES-GCM-SIV mode encryption and decryption
+
 import os
 import struct
 import mimetypes
 from pathlib import Path
 from typing import Optional
-from cryptography.hazmat.primitives.ciphers.aead import ChaCha20Poly1305
+from cryptography.hazmat.primitives.ciphers.aead import AESGCMSIV
 
 MAGIC = b"AEAD"
 VER = 1
-ALGO = b"CHA20P"
+ALGO = b"GCMSIV"
 
-def generate_key() -> bytes:
-    """Generate a ChaCha20-Poly1305 key (always 256 bits)."""
-    return ChaCha20Poly1305.generate_key()
+def generate_key(bit_length: int = 256) -> bytes:
+    """Generate an AES-GCM-SIV key (128/256 bits allowed)."""
+    if bit_length not in [128, 256]:
+        raise ValueError("Key length must be 128 or 256 bits for AES-GCM-SIV")
+    return AESGCMSIV.generate_key(bit_length)
 
 def parse_file(input_file: str) -> tuple[bytes, bytes]:
     """Read file as bytes and return (data, mime-bytes)."""
@@ -25,21 +29,25 @@ def parse_file(input_file: str) -> tuple[bytes, bytes]:
 def encrypt_file(input_file: str, output_path: str, key: bytes,
                  *, extra_aad: Optional[bytes] = None) -> str:
     """
-    ChaCha20-Poly1305 file encryption.
-    Nonce must be 12 bytes (96 bits).
+    AES-GCM-SIV file encryption.
+    GCM-SIV is nonce-misuse resistant (safer than regular GCM).
+    Nonce must be 12 bytes.
     """
     data, mime = parse_file(input_file)
+
     nonce = os.urandom(12)
 
-    chacha = ChaCha20Poly1305(key)
+    gcmsiv = AESGCMSIV(key)
 
     aad_parts = [mime]
     if extra_aad:
         aad_parts.append(extra_aad)
+
     combined_aad = bytearray()
     for part in aad_parts:
         combined_aad += struct.pack("!H", len(part)) + part
-    ct = chacha.encrypt(nonce, data, bytes(combined_aad) if combined_aad else None)
+
+    ct = gcmsiv.encrypt(nonce, data, bytes(combined_aad) if combined_aad else None)
 
     header = bytearray()
     header += MAGIC
@@ -59,7 +67,7 @@ def encrypt_file(input_file: str, output_path: str, key: bytes,
     return output_path
 
 def decrypt_file(input_file: str, output_path: str, key: bytes) -> str:
-    """ChaCha20-Poly1305 file decryption (reads header, rebuilds AAD, then decrypts)."""
+    """AES-GCM-SIV file decryption (reads header, rebuilds AAD, then decrypts)."""
     with open(input_file, "rb") as f:
         blob = f.read()
 
@@ -92,6 +100,7 @@ def decrypt_file(input_file: str, output_path: str, key: bytes) -> str:
 
     ct = blob[off:]
 
+    # Rebuild AAD
     aad_parts = [mime]
     if extra_aad:
         aad_parts.append(extra_aad)
@@ -100,8 +109,8 @@ def decrypt_file(input_file: str, output_path: str, key: bytes) -> str:
     for part in aad_parts:
         combined_aad += struct.pack("!H", len(part)) + part
 
-    chacha = ChaCha20Poly1305(key)
-    pt = chacha.decrypt(nonce, ct, bytes(combined_aad) if combined_aad else None)
+    gcmsiv = AESGCMSIV(key)
+    pt = gcmsiv.decrypt(nonce, ct, bytes(combined_aad) if combined_aad else None)
 
     with open(output_path, "wb") as f:
         f.write(pt)
@@ -111,28 +120,29 @@ def decrypt_file(input_file: str, output_path: str, key: bytes) -> str:
 
 if __name__ == '__main__':
     print("Generating key...")
-    key = generate_key()
+    key = generate_key(256)
 
     print("Creating test file...")
-    test_file = "test_chacha20.txt"
+    test_file = "test_aes_gcmsiv.txt"
     with open(test_file, "w") as f:
-        f.write("Hello! This is a test file for ChaCha20-Poly1305 encryption.")
+        f.write("Hello! This is a test file for AES-GCM-SIV encryption.")
 
     print("Encrypting...")
-    encrypted_file = "test_chacha20.txt.enc"
+    encrypted_file = "test_aes_gcmsiv.txt.enc"
     encrypt_file(test_file, encrypted_file, key)
     print(f"Encrypted: {encrypted_file}")
 
     print("Decrypting...")
-    decrypted_file = "test_chacha20_decrypted.txt"
+    decrypted_file = "test_aes_gcmsiv_decrypted.txt"
     decrypt_file(encrypted_file, decrypted_file, key)
     print(f"Decrypted: {decrypted_file}")
+
     with open(test_file, "rb") as f:
         original = f.read()
     with open(decrypted_file, "rb") as f:
         decrypted = f.read()
 
     if original == decrypted:
-        print("✓ SUCCESS! ChaCha20-Poly1305 Encryption/Decryption works correctly!")
+        print("✓ SUCCESS! AES-GCM-SIV Encryption/Decryption works correctly!")
     else:
         print("✗ FAILED! Files don't match!")
