@@ -43,6 +43,7 @@ This uses the default algorithm (aes_gcm) and auto-generates a key at `data/keys
 ```bash
 python main.py dec -i data/encrypted/myfile.txt.aes_gcm.enc
 ```
+This auto-detects the algorithm and saves the decrypted file to `data/decrypted/myfile.txt`
 
 ## Detailed Usage
 
@@ -118,10 +119,10 @@ python main.py decrypt \
 
 ### Example 1: Quick Encryption & Decryption
 ```bash
-# Encrypt
+# Encrypt (outputs to data/encrypted/plain.txt.aes_gcm.enc)
 python main.py enc -i data/plain.txt
 
-# Decrypt
+# Decrypt (outputs to data/decrypted/plain.txt)
 python main.py dec -i data/encrypted/plain.txt.aes_gcm.enc
 ```
 
@@ -170,8 +171,9 @@ pytest tests/test_aes_gcm.py -v
 ```
 .
 ├── data/
-│   ├── encrypted/      # Encrypted files
-│   ├── keys/           # Encryption keys
+│   ├── encrypted/      # Encrypted files (output of encryption)
+│   ├── decrypted/      # Decrypted files (output of decryption)
+│   ├── keys/           # Encryption keys (auto-generated)
 │   └── plain.txt       # Sample input file
 ├── src/
 │   ├── crypto/         # Encryption algorithm implementations
