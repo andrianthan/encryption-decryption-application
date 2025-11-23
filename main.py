@@ -17,6 +17,7 @@ from src.utils.input_validator import (
 DATA_DIR = Path("data")
 KEYS_DIR = DATA_DIR / "keys"
 ENCRYPTED_DIR = DATA_DIR / "encrypted"
+DECRYPTED_DIR = DATA_DIR / "decrypted"
 
 # Default settings
 DEFAULT_ALGORITHM = "aes_gcm"
@@ -76,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     )
     dec.add_argument(
         "--output", "-o",
-        help="Path for decrypted output file (default: {input}.decrypted)"
+        help="Path for decrypted output file (default: data/decrypted/{input})"
     )
     dec.add_argument(
         "--key-file", "-k",
@@ -169,6 +170,9 @@ def cmd_encrypt(args: argparse.Namespace) -> None:
         else ENCRYPTED_DIR / f"{input_path.name}.{algo_name}.enc"
     )
 
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Use default key path if not specified
     key_path = Path(args.key_file) if args.key_file else _get_default_key_path(algo_name)
     key = _load_or_generate_key(algo_name, key_path, args.generate_key)
@@ -201,11 +205,19 @@ def cmd_decrypt(args: argparse.Namespace) -> None:
 
     validate_algorithm(algo_name, ALGORITHMS)
 
-    output_path = (
-        Path(args.output)
-        if args.output
-        else input_path.with_suffix(".decrypted")
-    )
+    # Use decrypted directory by default, preserving original filename
+    if args.output:
+        output_path = Path(args.output)
+    else:
+        # Remove .enc extension if present, otherwise just use the filename
+        output_name = input_path.stem if input_path.suffix == ".enc" else input_path.name
+        # Also try to remove algorithm extension (e.g., .aes_gcm from file.txt.aes_gcm.enc)
+        if "." in output_name and output_name.split(".")[-1] in ALGORITHMS:
+            output_name = ".".join(output_name.split(".")[:-1])
+        output_path = DECRYPTED_DIR / output_name
+
+    # Ensure output directory exists
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Use default key path if not specified
     key_path = Path(args.key_file) if args.key_file else _get_default_key_path(algo_name)
