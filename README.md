@@ -4,10 +4,12 @@ A Python application for encrypting and decrypting files using multiple encrypti
 
 ## Features
 
+- **Two interfaces**: User-friendly GUI and powerful CLI
 - Multiple encryption algorithms (AES-GCM, AES-CCM, AES-SIV, AES-GCM-SIV, ChaCha20-Poly1305, AES-CBC+HMAC)
 - Automatic key generation and management
 - Smart algorithm auto-detection for decryption
-- Short command aliases for faster usage
+- Short command aliases for faster CLI usage
+- Activity logging and audit trail
 - Comprehensive test suite
 
 ## Prerequisites
@@ -28,18 +30,40 @@ Before executing the project, make sure you have the following installed:
 
 ## Quick Start
 
-### List Available Algorithms
+### Option 1: Graphical User Interface (GUI)
+
+For a user-friendly experience with no command-line required:
+
+```bash
+python gui_app.py
+```
+
+The GUI provides:
+- 🏠 **Home**: Quick actions and recent activity
+- 🔒 **Encrypt**: Easy file encryption with drag-and-drop
+- 🔓 **Decrypt**: Smart auto-detection of algorithm and keys
+- 🔑 **Keys**: Visual key management and generation
+- 📊 **Activity Log**: Complete operation history
+- ⚙️ **Settings**: Configuration and information
+
+**See [GUI_README.md](GUI_README.md) for the complete GUI guide.**
+
+### Option 2: Command Line Interface (CLI)
+
+For automation and scripting:
+
+**List Available Algorithms**
 ```bash
 python main.py ls
 ```
 
-### Encrypt a File (Minimal Syntax)
+**Encrypt a File (Minimal Syntax)**
 ```bash
 python main.py enc -i myfile.txt
 ```
 This uses the default algorithm (aes_gcm) and auto-generates a key at `data/keys/aes_gcm.key`
 
-### Decrypt a File (Auto-detects Algorithm)
+**Decrypt a File (Auto-detects Algorithm)**
 ```bash
 python main.py dec -i data/encrypted/myfile.txt.aes_gcm.enc
 ```
