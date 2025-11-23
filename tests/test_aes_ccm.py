@@ -51,6 +51,7 @@ def test_ccm_tampered_ciphertext_fails(tmp_path):
 
     blob = Path(outfile).read_bytes()
     tampered = bytearray(blob)
+    
     # flip bit to corrupt
     tampered[-5] ^= 0xFF 
     Path(outfile).write_bytes(bytes(tampered))

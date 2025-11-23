@@ -18,6 +18,9 @@ DATA_DIR = Path("data")
 KEYS_DIR = DATA_DIR / "keys"
 ENCRYPTED_DIR = DATA_DIR / "encrypted"
 
+# Default settings
+DEFAULT_ALGORITHM = "aes_gcm"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -26,29 +29,84 @@ def parse_args() -> argparse.Namespace:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # encrypt
-    enc = subparsers.add_parser("encrypt", help="Encrypt a file")
-    enc.add_argument("--algorithm", required=True, choices=ALGORITHMS.keys())
-    enc.add_argument("--input", required=True, help="Path to input file")
-    enc.add_argument("--output", help="Path for encrypted output file")
-    enc.add_argument("--key-file", required=True, help="Key file to use")
+    # encrypt (with aliases: enc)
+    enc = subparsers.add_parser("encrypt", aliases=["enc"], help="Encrypt a file")
     enc.add_argument(
-        "--generate-key",
+        "--algorithm", "-a",
+        default=DEFAULT_ALGORITHM,
+        choices=ALGORITHMS.keys(),
+        help=f"Encryption algorithm (default: {DEFAULT_ALGORITHM})"
+    )
+    enc.add_argument(
+        "--input", "-i",
+        required=True,
+        help="Path to input file"
+    )
+    enc.add_argument(
+        "--output", "-o",
+        help="Path for encrypted output file (default: data/encrypted/{input}.{algorithm}.enc)"
+    )
+    enc.add_argument(
+        "--key-file", "-k",
+        help="Key file to use (default: data/keys/{algorithm}.key)"
+    )
+    enc.add_argument(
+        "--generate-key", "-g",
         action="store_true",
-        help="Generate a new key file if it does not exist",
+        default=True,
+        help="Generate a new key file if it does not exist (default: True)"
+    )
+    enc.add_argument(
+        "--no-generate-key",
+        action="store_false",
+        dest="generate_key",
+        help="Do not auto-generate key files"
     )
 
-    # decrypt
-    dec = subparsers.add_parser("decrypt", help="Decrypt a file")
-    dec.add_argument("--algorithm", required=True, choices=ALGORITHMS.keys())
-    dec.add_argument("--input", required=True, help="Path to encrypted file")
-    dec.add_argument("--output", help="Path for decrypted output file")
-    dec.add_argument("--key-file", required=True, help="Key file to use")
+    # decrypt (with aliases: dec)
+    dec = subparsers.add_parser("decrypt", aliases=["dec"], help="Decrypt a file")
+    dec.add_argument(
+        "--algorithm", "-a",
+        help="Decryption algorithm (auto-detected from filename if not specified)"
+    )
+    dec.add_argument(
+        "--input", "-i",
+        required=True,
+        help="Path to encrypted file"
+    )
+    dec.add_argument(
+        "--output", "-o",
+        help="Path for decrypted output file (default: {input}.decrypted)"
+    )
+    dec.add_argument(
+        "--key-file", "-k",
+        help="Key file to use (default: data/keys/{algorithm}.key)"
+    )
 
-    # list algorithms
-    subparsers.add_parser("list-algorithms", help="List supported algorithms")
+    # list algorithms (with aliases: ls)
+    subparsers.add_parser("list-algorithms", aliases=["ls"], help="List supported algorithms")
 
     return parser.parse_args()
+
+
+# ---------- Helper functions ----------
+
+def _detect_algorithm_from_filename(filename: str) -> str | None:
+    """
+    Detect algorithm from encrypted filename pattern: filename.{algorithm}.enc
+    Returns algorithm name if detected, None otherwise.
+    """
+    parts = filename.split(".")
+    if len(parts) >= 3 and parts[-1] == "enc":
+        potential_algo = parts[-2]
+        if potential_algo in ALGORITHMS:
+            return potential_algo
+    return None
+
+
+def _get_default_key_path(algorithm: str) -> Path:
+    """Get default key file path for an algorithm."""
+    return KEYS_DIR / f"{algorithm}.key"
 
 
 # ---------- Key handling helpers (CLI-level) ----------
@@ -111,7 +169,8 @@ def cmd_encrypt(args: argparse.Namespace) -> None:
         else ENCRYPTED_DIR / f"{input_path.name}.{algo_name}.enc"
     )
 
-    key_path = Path(args.key_file)
+    # Use default key path if not specified
+    key_path = Path(args.key_file) if args.key_file else _get_default_key_path(algo_name)
     key = _load_or_generate_key(algo_name, key_path, args.generate_key)
 
     module = ALGORITHMS[algo_name]
@@ -126,11 +185,21 @@ def cmd_encrypt(args: argparse.Namespace) -> None:
 
 
 def cmd_decrypt(args: argparse.Namespace) -> None:
-    algo_name = args.algorithm
-    validate_algorithm(algo_name, ALGORITHMS)
-
     input_path = Path(args.input)
     validate_file_exists(str(input_path))
+
+    # Auto-detect algorithm from filename if not specified
+    algo_name = args.algorithm
+    if not algo_name:
+        algo_name = _detect_algorithm_from_filename(input_path.name)
+        if not algo_name:
+            raise SystemExit(
+                f"Error: Could not auto-detect algorithm from filename '{input_path.name}'. "
+                "Please specify --algorithm/-a explicitly."
+            )
+        print(f"[info] Auto-detected algorithm: {algo_name}")
+
+    validate_algorithm(algo_name, ALGORITHMS)
 
     output_path = (
         Path(args.output)
@@ -138,7 +207,8 @@ def cmd_decrypt(args: argparse.Namespace) -> None:
         else input_path.with_suffix(".decrypted")
     )
 
-    key_path = Path(args.key_file)
+    # Use default key path if not specified
+    key_path = Path(args.key_file) if args.key_file else _get_default_key_path(algo_name)
     validate_key_file_exists(str(key_path))
     key = _load_or_generate_key(algo_name, key_path, generate_if_missing=False)
 
@@ -156,11 +226,12 @@ def cmd_decrypt(args: argparse.Namespace) -> None:
 def main() -> None:
     args = parse_args()
 
-    if args.command == "list-algorithms":
+    # Handle command aliases
+    if args.command in ("list-algorithms", "ls"):
         cmd_list_algorithms()
-    elif args.command == "encrypt":
+    elif args.command in ("encrypt", "enc"):
         cmd_encrypt(args)
-    elif args.command == "decrypt":
+    elif args.command in ("decrypt", "dec"):
         cmd_decrypt(args)
     else:
         raise SystemExit(f"Unknown command: {args.command}")
