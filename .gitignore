@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+
+# Application data (optional - comment out if you want to commit test data)
+data/encrypted/*.enc
+data/decrypted/*
+data/activity_log.json
+
+# Keep directories but ignore contents
+!data/encrypted/.gitkeep
+!data/decrypted/.gitkeep
+!data/keys/.gitkeep
