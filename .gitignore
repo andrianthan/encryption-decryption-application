@@ -1,0 +1,4 @@
+
+# secrets — never commit encryption keys
+data/keys/*.key
+*.key
